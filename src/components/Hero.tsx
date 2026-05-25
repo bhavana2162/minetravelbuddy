@@ -32,8 +32,8 @@ export function Hero() {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="text-5xl sm:text-7xl md:text-[5.5rem] leading-[1.05] font-display font-light"
         >
-          Explore the world <br />
-          <span className="italic text-gradient-sunset">without limits.</span>
+          Explore The World <br />
+          <span className="italic text-gradient-sunset">Beyond Borders.</span>
         </motion.h1>
 
         <motion.p
@@ -42,7 +42,7 @@ export function Hero() {
           transition={{ duration: 0.7, delay: 0.25 }}
           className="mt-6 text-lg md:text-xl text-white/80 max-w-2xl mx-auto"
         >
-          Solo trips, couple escapes, group adventures, festivals, and guided experiences across every country.
+          Solo trips, group adventures, couple escapes, festival journeys, and AI-powered travel planning.
         </motion.p>
 
         <motion.div

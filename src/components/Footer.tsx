@@ -9,10 +9,10 @@ export function Footer() {
             <span className="w-8 h-8 rounded-full gradient-sunset grid place-items-center">
               <Globe2 className="w-4 h-4 text-white" />
             </span>
-            Nova<span className="text-gradient-sunset">Travels</span>
+            Nova<span className="text-gradient-sunset">TravelVerse</span>
           </div>
           <p className="mt-4 text-sm text-muted-foreground max-w-sm">
-            AI-powered tourism for solo souls, couples, families, and tribes. 120+ countries, one passport to it all.
+            The futuristic travel ecosystem — AI itineraries, group tribes, and cinematic journeys across 120+ countries.
           </p>
         </div>
         {[
@@ -32,7 +32,7 @@ export function Footer() {
         ))}
       </div>
       <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Nova Travels. Made for wanderers.
+        © {new Date().getFullYear()} Nova TravelVerse. Made for wanderers.
       </div>
     </footer>
   );

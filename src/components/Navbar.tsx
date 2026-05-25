@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Globe2, Search } from "lucide-react";
 
-const links = ["Destinations", "Styles", "Events", "AI Planner", "Community"];
+const links = ["Destinations", "Countries", "Styles", "Events", "AI Planner", "Community"];
 
 export function Navbar() {
   return (
@@ -16,7 +16,7 @@ export function Navbar() {
           <span className="w-8 h-8 rounded-full gradient-sunset grid place-items-center shadow-sunset">
             <Globe2 className="w-4 h-4 text-white" />
           </span>
-          Nova<span className="text-gradient-sunset">Travels</span>
+          Nova<span className="text-gradient-sunset">TravelVerse</span>
         </a>
         <nav className="hidden md:flex items-center gap-7 text-sm text-white/80">
           {links.map((l) => (
