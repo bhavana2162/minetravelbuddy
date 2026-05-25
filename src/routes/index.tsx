@@ -8,6 +8,7 @@ import { Events } from "@/components/Events";
 import { AIPlanner } from "@/components/AIPlanner";
 import { Community } from "@/components/Community";
 import { Footer } from "@/components/Footer";
+import { ChatBot } from "@/components/ChatBot";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,6 +38,7 @@ function Index() {
       <AIPlanner />
       <Community />
       <Footer />
+      <ChatBot />
     </main>
   );
 }
