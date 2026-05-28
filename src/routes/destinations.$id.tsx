@@ -129,7 +129,7 @@ function DestinationPage() {
               <UserCheck className="w-3.5 h-3.5" /> Guide services
             </div>
             <ul className="grid sm:grid-cols-2 gap-3 text-sm">
-              {d.guides.map((g) => (
+              {d.guides.map((g: string) => (
                 <li key={g} className="flex items-center gap-2 p-3 rounded-xl border border-border">
                   <CheckCircle2 className="w-4 h-4 text-accent shrink-0" /> {g}
                 </li>
@@ -143,7 +143,7 @@ function DestinationPage() {
               <Compass className="w-3.5 h-3.5" /> Local experiences & sightseeing
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
-              {d.experiences.map((x, i) => (
+              {d.experiences.map((x: string, i: number) => (
                 <motion.div
                   key={x}
                   initial={{ opacity: 0, y: 10 }}

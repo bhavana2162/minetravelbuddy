@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Search, MapPin, Sparkles, ArrowRight } from "lucide-react";
+import { MapPin, Sparkles, ArrowRight } from "lucide-react";
 import heroImg from "@/assets/hero-island.jpg";
 
 export function Hero() {
