@@ -1,63 +1,105 @@
-import santorini from "@/assets/dest-santorini.jpg";
-import kyoto from "@/assets/dest-kyoto.jpg";
 import bali from "@/assets/dest-bali.jpg";
-import swiss from "@/assets/dest-swiss.jpg";
-import dubai from "@/assets/dest-dubai.jpg";
 import maldives from "@/assets/dest-maldives.jpg";
-import paris from "@/assets/dest-paris.jpg";
+import goa from "@/assets/dest-goa.jpg";
+import thailand from "@/assets/dest-thailand.jpg";
+import korea from "@/assets/dest-korea.jpg";
 
-export const styles = [
-  { name: "Solo Escape", icon: "🧭", desc: "Find yourself on the road" },
-  { name: "Guided Trips", icon: "🗺️", desc: "Local experts by your side" },
-  { name: "Group of 10", icon: "👥", desc: "Curated small-group travel" },
-  { name: "Girls Only", icon: "💃", desc: "Safe, sisterhood, unforgettable" },
-  { name: "Boys Only", icon: "🤝", desc: "Backpacks & big adventures" },
-  { name: "Couple", icon: "💞", desc: "Romance written in passports" },
-  { name: "Family", icon: "🏡", desc: "Memories for every generation" },
-  { name: "Luxury", icon: "✨", desc: "Five-star, every moment" },
-  { name: "Backpacking", icon: "🎒", desc: "Budget, but never basic" },
-  { name: "Adventure", icon: "🏔️", desc: "Adrenaline-grade itineraries" },
-  { name: "Beach", icon: "🌊", desc: "Toes in the sand vibes" },
-  { name: "Honeymoon", icon: "💍", desc: "Begin the forever trip" },
-  { name: "Road Trips", icon: "🚗", desc: "Highway is the destination" },
-  { name: "Spiritual", icon: "🕉️", desc: "Sacred routes, inner journeys" },
-  { name: "Wildlife", icon: "🐯", desc: "Eye-to-eye with the wild" },
-  { name: "Festivals", icon: "🎆", desc: "Travel for the celebration" },
-];
+export type Destination = {
+  id: string;
+  name: string;
+  country: string;
+  image: string;
+  tagline: string;
+  blurb: string;
+  rating: number;
+  days: string;
+  bestSeason: string;
+  weather: string;
+  safety: string;
+  budgetPerDay: number; // USD per traveler per day (guide + experiences only)
+  guides: string[];
+  experiences: string[];
+};
 
-export const destinations = [
-  { id: "maldives", name: "Maldives", country: "Maldives", image: maldives, tag: "Overwater Villa", price: "$1,499", currency: "USD", days: "5N / 6D", rating: 4.9 },
-  { id: "santorini", name: "Santorini", country: "Greece", image: santorini, tag: "Couple Escape", price: "€1,199", currency: "EUR", days: "4N / 5D", rating: 4.8 },
-  { id: "bali", name: "Ubud, Bali", country: "Indonesia", image: bali, tag: "Spiritual Retreat", price: "Rp 9.5M", currency: "IDR", days: "6N / 7D", rating: 4.9 },
-  { id: "kyoto", name: "Kyoto", country: "Japan", image: kyoto, tag: "Sakura Season", price: "¥189,000", currency: "JPY", days: "5N / 6D", rating: 4.9 },
-  { id: "swiss", name: "Interlaken", country: "Switzerland", image: swiss, tag: "Alpine Luxury", price: "CHF 2,250", currency: "CHF", days: "7N / 8D", rating: 4.9 },
-  { id: "dubai", name: "Dubai", country: "UAE", image: dubai, tag: "City of Gold", price: "AED 3,499", currency: "AED", days: "4N / 5D", rating: 4.7 },
-  { id: "paris", name: "Paris", country: "France", image: paris, tag: "Romance Capital", price: "€999", currency: "EUR", days: "4N / 5D", rating: 4.8 },
-];
-
-export const countries = [
-  { code: "IN", name: "India", flag: "🇮🇳", cities: ["Goa", "Kerala", "Kashmir", "Manali", "Jaipur", "Ladakh", "Andaman"] },
-  { code: "TH", name: "Thailand", flag: "🇹🇭", cities: ["Bangkok", "Phuket", "Krabi", "Chiang Mai", "Pattaya"] },
-  { code: "JP", name: "Japan", flag: "🇯🇵", cities: ["Tokyo", "Osaka", "Kyoto", "Mt. Fuji"] },
-  { code: "KR", name: "South Korea", flag: "🇰🇷", cities: ["Seoul", "Busan", "Jeju"] },
-  { code: "CH", name: "Switzerland", flag: "🇨🇭", cities: ["Zurich", "Interlaken", "Lucerne"] },
-  { code: "FR", name: "France", flag: "🇫🇷", cities: ["Paris", "Nice", "Lyon"] },
-  { code: "ID", name: "Bali", flag: "🇮🇩", cities: ["Ubud", "Kuta", "Seminyak", "Nusa Penida"] },
-  { code: "AE", name: "Dubai", flag: "🇦🇪", cities: ["Downtown", "Marina", "Palm Jumeirah"] },
-  { code: "MV", name: "Maldives", flag: "🇲🇻", cities: ["Malé", "Maafushi", "Baa Atoll"] },
-  { code: "IT", name: "Italy", flag: "🇮🇹", cities: ["Rome", "Venice", "Florence", "Amalfi"] },
-  { code: "TR", name: "Turkey", flag: "🇹🇷", cities: ["Istanbul", "Cappadocia", "Antalya"] },
-  { code: "SG", name: "Singapore", flag: "🇸🇬", cities: ["Marina Bay", "Sentosa"] },
-];
-
-export const events = [
-  { month: "Jan", country: "India 🇮🇳", name: "Sankranti", desc: "Kite festival across skies", weather: "Cool", price: "₹12,999" },
-  { month: "Mar", country: "India 🇮🇳", name: "Holi", desc: "Festival of colors", weather: "Warm", price: "₹15,499" },
-  { month: "Mar", country: "Japan 🇯🇵", name: "Cherry Blossom", desc: "Sakura blooms nationwide", weather: "Mild", price: "¥210,000" },
-  { month: "Apr", country: "Thailand 🇹🇭", name: "Songkran", desc: "Water festival, new year", weather: "Hot", price: "฿28,000" },
-  { month: "Jul", country: "France 🇫🇷", name: "Bastille Day", desc: "Fireworks over the Seine", weather: "Sunny", price: "€1,099" },
-  { month: "Jul", country: "Japan 🇯🇵", name: "Gion Matsuri", desc: "Kyoto's grand parade", weather: "Hot", price: "¥195,000" },
-  { month: "Oct", country: "India 🇮🇳", name: "Dussehra", desc: "Mysore royal procession", weather: "Pleasant", price: "₹14,999" },
-  { month: "Nov", country: "India 🇮🇳", name: "Diwali", desc: "Festival of lights", weather: "Cool", price: "₹17,999" },
-  { month: "Dec", country: "Switzerland 🇨🇭", name: "Christmas Markets", desc: "Alpine winter magic", weather: "Snow", price: "CHF 2,400" },
+export const destinations: Destination[] = [
+  {
+    id: "bali",
+    name: "Bali",
+    country: "Indonesia",
+    image: bali,
+    tagline: "Island of the Gods",
+    blurb: "Sacred temples, emerald rice terraces, and surf-soaked sunsets.",
+    rating: 4.9,
+    days: "6N / 7D",
+    bestSeason: "Apr – Oct",
+    weather: "26–31°C, tropical",
+    safety: "Very Safe · 4.8/5",
+    budgetPerDay: 65,
+    guides: ["Local sightseeing guide", "Cultural temple guide", "Surf instructor", "Food tour guide", "Language assistance"],
+    experiences: ["Ubud rice terrace walk", "Uluwatu sunset & Kecak dance", "Nusa Penida island hop", "Mount Batur sunrise trek"],
+  },
+  {
+    id: "maldives",
+    name: "Maldives",
+    country: "Maldives",
+    image: maldives,
+    tagline: "Where the ocean writes poetry",
+    blurb: "Glass-clear lagoons, coral reefs, and bioluminescent shores.",
+    rating: 4.9,
+    days: "5N / 6D",
+    bestSeason: "Nov – Apr",
+    weather: "27–30°C, sunny",
+    safety: "Very Safe · 4.9/5",
+    budgetPerDay: 80,
+    guides: ["Snorkel & dive guide", "Island-hop local guide", "Marine biologist tour", "Cultural Malé guide", "Language assistance"],
+    experiences: ["Manta ray snorkel", "Sandbank picnic", "Bioluminescent beach night", "Local island culture walk"],
+  },
+  {
+    id: "goa",
+    name: "Goa",
+    country: "India",
+    image: goa,
+    tagline: "Sun, sand & susegad",
+    blurb: "Portuguese soul, palm-fringed beaches, and electric night markets.",
+    rating: 4.7,
+    days: "4N / 5D",
+    bestSeason: "Nov – Feb",
+    weather: "24–32°C, breezy",
+    safety: "Safe · 4.5/5",
+    budgetPerDay: 35,
+    guides: ["Local beach guide", "Heritage walking guide", "Food & feni tour", "Adventure water-sports guide", "Language assistance"],
+    experiences: ["Old Goa heritage walk", "Dudhsagar waterfall trek", "Anjuna flea market", "Sunset dolphin cruise"],
+  },
+  {
+    id: "thailand",
+    name: "Thailand",
+    country: "Thailand",
+    image: thailand,
+    tagline: "Land of smiles",
+    blurb: "Limestone cliffs, floating markets, and temples that glow at dusk.",
+    rating: 4.8,
+    days: "6N / 7D",
+    bestSeason: "Nov – Mar",
+    weather: "25–33°C, tropical",
+    safety: "Safe · 4.6/5",
+    budgetPerDay: 55,
+    guides: ["Phi Phi island guide", "Bangkok cultural guide", "Muay Thai experience guide", "Street food tour guide", "Language assistance"],
+    experiences: ["Phi Phi island longtail tour", "Grand Palace & Wat Pho", "Chiang Mai elephant sanctuary", "Floating market crawl"],
+  },
+  {
+    id: "korea",
+    name: "South Korea",
+    country: "South Korea",
+    image: korea,
+    tagline: "Tradition meets neon",
+    blurb: "Hanok villages, cherry blossoms, and Seoul's electric nights.",
+    rating: 4.8,
+    days: "6N / 7D",
+    bestSeason: "Mar – May, Sep – Nov",
+    weather: "10–24°C, mild",
+    safety: "Very Safe · 4.9/5",
+    budgetPerDay: 75,
+    guides: ["Seoul cultural guide", "K-drama locations guide", "Hanok village guide", "Korean BBQ food guide", "Language assistance"],
+    experiences: ["Gyeongbokgung palace tour", "Bukchon Hanok walk", "Cherry blossom picnic", "Myeongdong night market"],
+  },
 ];

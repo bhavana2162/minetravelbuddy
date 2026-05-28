@@ -42,59 +42,22 @@ export function Hero() {
           transition={{ duration: 0.7, delay: 0.25 }}
           className="mt-6 text-lg md:text-xl text-white/80 max-w-2xl mx-auto"
         >
-          Solo trips, group adventures, couple escapes, festival journeys, and AI-powered travel planning.
+          Five cinematic destinations. Local guides. Real experiences.
         </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-          className="mt-10 glass-dark rounded-2xl p-2 flex items-center max-w-2xl mx-auto shadow-glow"
-        >
-          <div className="flex-1 flex items-center gap-3 px-4">
-            <Search className="w-5 h-5 text-white/60" />
-            <input
-              placeholder="Search Bali, Holi festival, solo trips…"
-              className="flex-1 bg-transparent py-3 text-white placeholder:text-white/50 focus:outline-none text-sm"
-            />
-          </div>
-          <button className="gradient-sunset rounded-xl px-5 py-3 text-sm font-medium flex items-center gap-2 hover:scale-[1.02] transition shadow-sunset">
-            Discover <ArrowRight className="w-4 h-4" />
-          </button>
-        </motion.div>
 
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: 0.6 }}
-          className="mt-8 flex flex-wrap justify-center gap-3"
+          transition={{ duration: 0.7, delay: 0.5 }}
+          className="mt-10 flex justify-center"
         >
-          <a href="#destinations" className="glass-dark px-5 py-2.5 rounded-full text-sm flex items-center gap-2 hover:bg-white/15 transition">
-            <MapPin className="w-4 h-4" /> Explore Destinations
-          </a>
-          <a href="#ai-planner" className="bg-white text-foreground px-5 py-2.5 rounded-full text-sm font-medium hover:scale-105 transition flex items-center gap-2">
-            <Sparkles className="w-4 h-4" /> Plan My Trip with AI
+          <a
+            href="#destinations"
+            className="bg-white text-foreground px-6 py-3 rounded-full text-sm font-medium hover:scale-105 transition flex items-center gap-2"
+          >
+            <MapPin className="w-4 h-4" /> Explore Destinations <ArrowRight className="w-4 h-4" />
           </a>
         </motion.div>
-
-        <div className="mt-20 grid grid-cols-3 max-w-xl mx-auto gap-8 text-left">
-          {[
-            { k: "120+", v: "Countries" },
-            { k: "2,400", v: "Curated trips" },
-            { k: "98%", v: "5-star reviews" },
-          ].map((s, i) => (
-            <motion.div
-              key={s.v}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 + i * 0.1 }}
-              className="border-l border-white/20 pl-4"
-            >
-              <div className="text-3xl font-display">{s.k}</div>
-              <div className="text-xs uppercase tracking-widest text-white/60 mt-1">{s.v}</div>
-            </motion.div>
-          ))}
-        </div>
       </div>
     </section>
   );
