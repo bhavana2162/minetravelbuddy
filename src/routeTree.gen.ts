@@ -9,48 +9,94 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DestinationsIdRouteImport } from './routes/destinations.$id'
+import { Route as CSlugRouteImport } from './routes/c.$slug'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DestinationsIdRoute = DestinationsIdRouteImport.update({
-  id: '/destinations/$id',
-  path: '/destinations/$id',
+const CSlugRoute = CSlugRouteImport.update({
+  id: '/c/$slug',
+  path: '/c/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/destinations/$id': typeof DestinationsIdRoute
+  '/auth': typeof AuthRoute
+  '/profile': typeof AuthenticatedProfileRoute
+  '/c/$slug': typeof CSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/destinations/$id': typeof DestinationsIdRoute
+  '/auth': typeof AuthRoute
+  '/profile': typeof AuthenticatedProfileRoute
+  '/c/$slug': typeof CSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/destinations/$id': typeof DestinationsIdRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/c/$slug': typeof CSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/destinations/$id'
+  fullPaths: '/' | '/auth' | '/profile' | '/c/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/destinations/$id'
-  id: '__root__' | '/' | '/destinations/$id'
+  to: '/' | '/auth' | '/profile' | '/c/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/profile'
+    | '/c/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DestinationsIdRoute: typeof DestinationsIdRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  CSlugRoute: typeof CSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -58,19 +104,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/destinations/$id': {
-      id: '/destinations/$id'
-      path: '/destinations/$id'
-      fullPath: '/destinations/$id'
-      preLoaderRoute: typeof DestinationsIdRouteImport
+    '/c/$slug': {
+      id: '/c/$slug'
+      path: '/c/$slug'
+      fullPath: '/c/$slug'
+      preLoaderRoute: typeof CSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DestinationsIdRoute: DestinationsIdRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  CSlugRoute: CSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
