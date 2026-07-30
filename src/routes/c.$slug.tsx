@@ -43,8 +43,10 @@ function CommunityChat() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [showEmoji, setShowEmoji] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   // Load community
   useEffect(() => {
