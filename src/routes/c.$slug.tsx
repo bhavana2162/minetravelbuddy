@@ -236,7 +236,10 @@ function CommunityChat() {
       reply_to: replyTo?.id ?? null,
     });
     setSending(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      console.error("[send message]", error);
+      return toast.error("Your message couldn't be sent. Please try again.");
+    }
     setText(""); setImageUrl(""); setReplyTo(null);
   };
 
