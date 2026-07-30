@@ -313,16 +313,20 @@ function CommunityChat() {
               {isMember ? (
                 <button
                   onClick={leave}
-                  className="px-3 py-1.5 rounded-full glass-strong text-sm hover:bg-destructive/20 hover:text-destructive transition flex items-center gap-1.5"
+                  disabled={joining}
+                  className="px-3 py-1.5 rounded-full glass-strong text-sm hover:bg-destructive/20 hover:text-destructive transition flex items-center gap-1.5 disabled:opacity-60"
                 >
-                  <LeaveIcon className="w-3.5 h-3.5" /> Leave
+                  {joining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LeaveIcon className="w-3.5 h-3.5" />}
+                  Leave community
                 </button>
               ) : (
                 <button
                   onClick={join}
-                  className="px-4 py-1.5 rounded-full gradient-primary text-white text-sm font-semibold shadow-glow hover:scale-105 transition"
+                  disabled={joining}
+                  className="px-4 py-1.5 rounded-full gradient-primary text-white text-sm font-semibold shadow-glow hover:scale-105 transition disabled:opacity-60 disabled:hover:scale-100 flex items-center gap-1.5"
                 >
-                  Join community
+                  {joining && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {joining ? "Joining…" : "Join community"}
                 </button>
               )}
             </div>
