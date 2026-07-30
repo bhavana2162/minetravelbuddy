@@ -44,7 +44,8 @@ function mergeMessages(current: Message[], incoming: Message[]) {
   const byId = new Map(current.map((message) => [message.id, message]));
   incoming.forEach((message) => byId.set(message.id, message));
   return Array.from(byId.values()).sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime() || a.id.localeCompare(b.id),
   );
 }
 
@@ -195,11 +196,29 @@ function CommunityChat() {
       });
 
     (async () => {
-      const { data: msgs, error: messagesError } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("community_id", community.id)
-        .order("created_at", { ascending: true });
+      const pageSize = 1000;
+      const history: Message[] = [];
+      let offset = 0;
+      let messagesError: { message: string } | null = null;
+
+      while (active) {
+        const { data, error } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("community_id", community.id)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (error) {
+          messagesError = error;
+          break;
+        }
+        const page = (data ?? []) as Message[];
+        history.push(...page);
+        if (page.length < pageSize) break;
+        offset += pageSize;
+      }
+
       if (!active) return;
       if (messagesError) {
         console.error("[load messages]", messagesError);
@@ -207,9 +226,9 @@ function CommunityChat() {
         toast.error("Messages couldn't be loaded. Please try again.");
         return;
       }
-      setMessages((current) => mergeMessages(current, (msgs ?? []) as Message[]));
+      setMessages((current) => mergeMessages(current, history));
 
-      const uids = Array.from(new Set((msgs ?? []).map((m: any) => m.user_id)));
+      const uids = Array.from(new Set(history.map((message) => message.user_id)));
       if (uids.length) {
         const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids);
         const map: Record<string, Profile> = {};
@@ -217,7 +236,7 @@ function CommunityChat() {
         if (active) setProfiles((current) => ({ ...current, ...map }));
       }
 
-      const messageIds = (msgs ?? []).map((m: any) => m.id);
+      const messageIds = history.map((message) => message.id);
       if (messageIds.length) {
         const { data: rxns } = await supabase
           .from("message_reactions")
