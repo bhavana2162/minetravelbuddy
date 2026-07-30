@@ -158,26 +158,68 @@ function CommunityChat() {
   }, [messages.length]);
 
   const join = async () => {
-    if (!community || !user) return;
-    const { error } = await supabase.from("community_members").insert({
-      community_id: community.id, user_id: user.id,
-    });
-    if (error) return toast.error(error.message);
-    toast.success(`Joined ${community.name}`);
-    setIsMember(true);
-    loadMembers(community.id);
+    if (!community || !user || joining) return;
+    setJoining(true);
+    try {
+      // 1. Check existing membership first — avoids duplicate-key errors
+      const { data: existing, error: checkError } = await supabase
+        .from("community_members")
+        .select("id")
+        .eq("community_id", community.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (existing) {
+        setIsMember(true);
+        await loadMembers(community.id);
+        toast.info(`You're already a member of ${community.name}`);
+        return;
+      }
+
+      // 2. Insert membership (ignore duplicates from a race)
+      const { error } = await supabase
+        .from("community_members")
+        .upsert(
+          { community_id: community.id, user_id: user.id },
+          { onConflict: "community_id,user_id", ignoreDuplicates: true },
+        );
+      if (error) throw error;
+
+      setIsMember(true);
+      await loadMembers(community.id);
+      queryClient.invalidateQueries({ queryKey: ["community-counts"] });
+      toast.success(`Welcome to ${community.name}!`);
+    } catch (err) {
+      console.error("[join community]", err);
+      setIsMember(false);
+      toast.error("We couldn't join you to this community. Please try again.");
+    } finally {
+      setJoining(false);
+    }
   };
   const leave = async () => {
-    if (!community || !user) return;
-    const { error } = await supabase
-      .from("community_members")
-      .delete()
-      .eq("community_id", community.id)
-      .eq("user_id", user.id);
-    if (error) return toast.error(error.message);
-    setIsMember(false);
-    setMessages([]);
-    toast.success("You left the community");
+    if (!community || !user || joining) return;
+    setJoining(true);
+    try {
+      const { error } = await supabase
+        .from("community_members")
+        .delete()
+        .eq("community_id", community.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      setIsMember(false);
+      setMessages([]);
+      setMembers([]);
+      queryClient.invalidateQueries({ queryKey: ["community-counts"] });
+      toast.success("You left the community");
+    } catch (err) {
+      console.error("[leave community]", err);
+      toast.error("We couldn't remove you from this community. Please try again.");
+    } finally {
+      setJoining(false);
+    }
   };
 
   const send = async () => {
