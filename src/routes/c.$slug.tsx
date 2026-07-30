@@ -9,6 +9,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/c/$slug")({
+  head: () => ({
+    meta: [
+      { title: "Community Chat | Nova TravelVerse" },
+      { name: "description", content: "Join your Nova TravelVerse community conversation in real time." },
+      { property: "og:title", content: "Community Chat | Nova TravelVerse" },
+      { property: "og:description", content: "Join your Nova TravelVerse community conversation in real time." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: CommunityChat,
 });
 
@@ -28,6 +38,16 @@ type Message = {
   created_at: string;
 };
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
+type Presence = { user_id?: string };
+
+function mergeMessages(current: Message[], incoming: Message[]) {
+  const byId = new Map(current.map((message) => [message.id, message]));
+  incoming.forEach((message) => byId.set(message.id, message));
+  return Array.from(byId.values()).sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime() || a.id.localeCompare(b.id),
+  );
+}
 
 function CommunityChat() {
   const { slug } = Route.useParams();
@@ -39,6 +59,7 @@ function CommunityChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
   const [text, setText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -112,66 +133,130 @@ function CommunityChat() {
 
   // Load messages + subscribe
   useEffect(() => {
-    if (!community || !isMember) return;
+    if (!community || !isMember || !user) {
+      setMessages([]);
+      setProfiles({});
+      setReactions([]);
+      setOnlineUserIds(new Set());
+      return;
+    }
     setLoading(true);
-    (async () => {
-      const { data: msgs } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("community_id", community.id)
-        .order("created_at", { ascending: true })
-        .limit(200);
-      setMessages((msgs ?? []) as Message[]);
-
-      const uids = Array.from(new Set((msgs ?? []).map((m: any) => m.user_id)));
-      if (uids.length) {
-        const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids);
-        const map: Record<string, Profile> = {};
-        (profs ?? []).forEach((p: any) => { map[p.id] = p; });
-        setProfiles(map);
-      }
-
-      const { data: rxns } = await supabase
-        .from("message_reactions")
-        .select("*")
-        .in("message_id", (msgs ?? []).map((m: any) => m.id));
-      setReactions((rxns ?? []) as Reaction[]);
-      setLoading(false);
-    })();
+    setMessages([]);
+    setProfiles({});
+    setReactions([]);
+    let active = true;
 
     const ch = supabase
-      .channel(`chat-${community.id}`)
+      .channel(`chat-${community.id}`, { config: { presence: { key: user.id } } })
+      .on(
+        "presence",
+        { event: "sync" },
+        () => {
+          const state = ch.presenceState<Presence>();
+          const connectedIds = new Set<string>();
+          Object.values(state).flat().forEach((presence) => {
+            if (presence.user_id) connectedIds.add(presence.user_id);
+          });
+          if (active) setOnlineUserIds(connectedIds);
+        },
+      )
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `community_id=eq.${community.id}` },
         async (payload) => {
           const m = payload.new as Message;
-          setMessages((arr) => [...arr, m]);
-          if (!profiles[m.user_id]) {
-            const { data: p } = await supabase.from("profiles").select("id, name, avatar_url").eq("id", m.user_id).maybeSingle();
-            if (p) setProfiles((x) => ({ ...x, [p.id]: p as Profile }));
-          }
+          setMessages((current) => mergeMessages(current, [m]));
+          const { data: p } = await supabase
+            .from("profiles")
+            .select("id, name, avatar_url")
+            .eq("id", m.user_id)
+            .maybeSingle();
+          if (active && p) setProfiles((current) => ({ ...current, [p.id]: p as Profile }));
         },
       )
       .on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "messages", filter: `community_id=eq.${community.id}` },
-        (payload) => setMessages((arr) => arr.filter((m) => m.id !== (payload.old as any).id)),
+        (payload) => setMessages((current) => current.filter((message) => message.id !== (payload.old as { id?: string }).id)),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "message_reactions" },
         async () => {
-          const ids = messagesRef.current.map((m) => m.id);
+          const ids = messagesRef.current.map((message) => message.id);
           if (!ids.length) return;
           const { data } = await supabase.from("message_reactions").select("*").in("message_id", ids);
-          setReactions((data ?? []) as Reaction[]);
+          if (active) setReactions((data ?? []) as Reaction[]);
         },
       )
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await ch.track({ user_id: user.id, online_at: new Date().toISOString() });
+        }
+      });
+
+    (async () => {
+      const pageSize = 1000;
+      const history: Message[] = [];
+      let offset = 0;
+      let messagesError: { message: string } | null = null;
+
+      while (active) {
+        const { data, error } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("community_id", community.id)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (error) {
+          messagesError = error;
+          break;
+        }
+        const page = (data ?? []) as Message[];
+        history.push(...page);
+        if (page.length < pageSize) break;
+        offset += pageSize;
+      }
+
+      if (!active) return;
+      if (messagesError) {
+        console.error("[load messages]", messagesError);
+        setLoading(false);
+        toast.error("Messages couldn't be loaded. Please try again.");
+        return;
+      }
+      setMessages((current) => mergeMessages(current, history));
+
+      const uids = Array.from(new Set(history.map((message) => message.user_id)));
+      if (uids.length) {
+        const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url").in("id", uids);
+        const map: Record<string, Profile> = {};
+        (profs ?? []).forEach((p: any) => { map[p.id] = p; });
+        if (active) setProfiles((current) => ({ ...current, ...map }));
+      }
+
+      const messageIds = history.map((message) => message.id);
+      if (messageIds.length) {
+        const { data: rxns } = await supabase
+          .from("message_reactions")
+          .select("*")
+          .in("message_id", messageIds);
+        if (active) setReactions((rxns ?? []) as Reaction[]);
+      } else if (active) {
+        setReactions([]);
+      }
+      if (active) setLoading(false);
+    })();
+
+    return () => {
+      active = false;
+      setOnlineUserIds(new Set());
+      void ch.untrack();
+      void supabase.removeChannel(ch);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [community?.id, isMember]);
+  }, [community?.id, isMember, user?.id]);
 
   // keep ref for realtime callback
   const messagesRef = useRef<Message[]>([]);
@@ -519,7 +604,13 @@ function CommunityChat() {
                       {(m.name ?? "?").slice(0, 1).toUpperCase()}
                     </div>
                   )}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 ring-2 ring-card" />
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-card ${
+                      onlineUserIds.has(m.id) ? "bg-green-500" : "bg-muted-foreground"
+                    }`}
+                    aria-label={onlineUserIds.has(m.id) ? "Online" : "Offline"}
+                    title={onlineUserIds.has(m.id) ? "Online" : "Offline"}
+                  />
                 </div>
                 <span className="text-sm truncate">{m.name || "Traveler"}</span>
               </div>
