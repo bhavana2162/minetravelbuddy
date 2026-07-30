@@ -185,24 +185,13 @@ function CommunityChat() {
     if (!community || !user || joining) return;
     setJoining(true);
     try {
-      // 1. Check existing membership first — avoids duplicate-key errors
-      const { data: existing, error: checkError } = await supabase
-        .from("community_members")
-        .select("id")
-        .eq("community_id", community.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-
-      if (existing) {
-        setIsMember(true);
+      const already = await refreshMembership(community.id);
+      if (already) {
         await loadMembers(community.id);
         toast.info(`You're already a member of ${community.name}`);
         return;
       }
 
-      // 2. Insert membership (ignore duplicates from a race)
       const { error } = await supabase
         .from("community_members")
         .upsert(
@@ -211,18 +200,19 @@ function CommunityChat() {
         );
       if (error) throw error;
 
-      setIsMember(true);
+      const joined = await refreshMembership(community.id);
       await loadMembers(community.id);
       queryClient.invalidateQueries({ queryKey: ["community-counts"] });
-      toast.success(`Welcome to ${community.name}!`);
+      if (joined) toast.success(`Welcome to ${community.name}!`);
+      else toast.error("We couldn't join you to this community. Please try again.");
     } catch (err) {
       console.error("[join community]", err);
-      setIsMember(false);
       toast.error("We couldn't join you to this community. Please try again.");
     } finally {
       setJoining(false);
     }
   };
+
   const leave = async () => {
     if (!community || !user || joining) return;
     setJoining(true);
