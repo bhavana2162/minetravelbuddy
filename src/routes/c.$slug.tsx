@@ -62,32 +62,53 @@ function CommunityChat() {
     })();
   }, [slug, navigate]);
 
-  // Load members & membership
-  const loadMembers = async (cid: string) => {
-    const { data } = await supabase
+  // Authoritative membership check for the signed-in user
+  const refreshMembership = async (cid: string) => {
+    const { data: authData } = await supabase.auth.getUser();
+    const uid = authData.user?.id;
+    if (!uid) { setIsMember(false); return false; }
+    const { data, error } = await supabase
       .from("community_members")
-      .select("user_id, profiles(id, name, avatar_url)")
+      .select("id")
+      .eq("community_id", cid)
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (error) { console.error("[membership check]", error); return false; }
+    const member = !!data;
+    setIsMember(member);
+    return member;
+  };
+
+  // Members list (two-step: memberships, then profiles — no FK embed available)
+  const loadMembers = async (cid: string) => {
+    const { data: rows, error } = await supabase
+      .from("community_members")
+      .select("user_id")
       .eq("community_id", cid);
-    const profs: Profile[] = (data ?? []).map((r: any) => r.profiles).filter(Boolean);
-    setMembers(profs);
-    if (user) setIsMember(profs.some((p) => p.id === user.id));
+    if (error) { console.error("[load members]", error); return; }
+    const ids = Array.from(new Set((rows ?? []).map((r: any) => r.user_id)));
+    if (!ids.length) { setMembers([]); return; }
+    const { data: profs } = await supabase.from("profiles").select("id, name, avatar_url").in("id", ids);
+    setMembers((profs ?? []) as Profile[]);
   };
 
   useEffect(() => {
     if (!community) return;
-    loadMembers(community.id);
+    if (!user) { setIsMember(false); return; }
+    refreshMembership(community.id).then(() => loadMembers(community.id));
     // realtime member updates
     const ch = supabase
       .channel(`members-${community.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "community_members", filter: `community_id=eq.${community.id}` },
-        () => loadMembers(community.id),
+        () => { refreshMembership(community.id); loadMembers(community.id); },
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [community?.id, user?.id]);
+
 
   // Load messages + subscribe
   useEffect(() => {
