@@ -223,9 +223,10 @@ function CommunityChat() {
         .eq("community_id", community.id)
         .eq("user_id", user.id);
       if (error) throw error;
-      setIsMember(false);
+      await refreshMembership(community.id);
       setMessages([]);
       setMembers([]);
+
       queryClient.invalidateQueries({ queryKey: ["community-counts"] });
       toast.success("You left the community");
     } catch (err) {
