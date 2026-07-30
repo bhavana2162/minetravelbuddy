@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Send, Smile, Reply, Trash2, Image as ImageIcon, X, Users, LogOut as LeaveIcon, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -43,8 +44,10 @@ function CommunityChat() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [showEmoji, setShowEmoji] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   // Load community
   useEffect(() => {
@@ -158,26 +161,68 @@ function CommunityChat() {
   }, [messages.length]);
 
   const join = async () => {
-    if (!community || !user) return;
-    const { error } = await supabase.from("community_members").insert({
-      community_id: community.id, user_id: user.id,
-    });
-    if (error) return toast.error(error.message);
-    toast.success(`Joined ${community.name}`);
-    setIsMember(true);
-    loadMembers(community.id);
+    if (!community || !user || joining) return;
+    setJoining(true);
+    try {
+      // 1. Check existing membership first — avoids duplicate-key errors
+      const { data: existing, error: checkError } = await supabase
+        .from("community_members")
+        .select("id")
+        .eq("community_id", community.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (existing) {
+        setIsMember(true);
+        await loadMembers(community.id);
+        toast.info(`You're already a member of ${community.name}`);
+        return;
+      }
+
+      // 2. Insert membership (ignore duplicates from a race)
+      const { error } = await supabase
+        .from("community_members")
+        .upsert(
+          { community_id: community.id, user_id: user.id },
+          { onConflict: "community_id,user_id", ignoreDuplicates: true },
+        );
+      if (error) throw error;
+
+      setIsMember(true);
+      await loadMembers(community.id);
+      queryClient.invalidateQueries({ queryKey: ["community-counts"] });
+      toast.success(`Welcome to ${community.name}!`);
+    } catch (err) {
+      console.error("[join community]", err);
+      setIsMember(false);
+      toast.error("We couldn't join you to this community. Please try again.");
+    } finally {
+      setJoining(false);
+    }
   };
   const leave = async () => {
-    if (!community || !user) return;
-    const { error } = await supabase
-      .from("community_members")
-      .delete()
-      .eq("community_id", community.id)
-      .eq("user_id", user.id);
-    if (error) return toast.error(error.message);
-    setIsMember(false);
-    setMessages([]);
-    toast.success("You left the community");
+    if (!community || !user || joining) return;
+    setJoining(true);
+    try {
+      const { error } = await supabase
+        .from("community_members")
+        .delete()
+        .eq("community_id", community.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      setIsMember(false);
+      setMessages([]);
+      setMembers([]);
+      queryClient.invalidateQueries({ queryKey: ["community-counts"] });
+      toast.success("You left the community");
+    } catch (err) {
+      console.error("[leave community]", err);
+      toast.error("We couldn't remove you from this community. Please try again.");
+    } finally {
+      setJoining(false);
+    }
   };
 
   const send = async () => {
@@ -191,7 +236,10 @@ function CommunityChat() {
       reply_to: replyTo?.id ?? null,
     });
     setSending(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      console.error("[send message]", error);
+      return toast.error("Your message couldn't be sent. Please try again.");
+    }
     setText(""); setImageUrl(""); setReplyTo(null);
   };
 
@@ -268,16 +316,20 @@ function CommunityChat() {
               {isMember ? (
                 <button
                   onClick={leave}
-                  className="px-3 py-1.5 rounded-full glass-strong text-sm hover:bg-destructive/20 hover:text-destructive transition flex items-center gap-1.5"
+                  disabled={joining}
+                  className="px-3 py-1.5 rounded-full glass-strong text-sm hover:bg-destructive/20 hover:text-destructive transition flex items-center gap-1.5 disabled:opacity-60"
                 >
-                  <LeaveIcon className="w-3.5 h-3.5" /> Leave
+                  {joining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LeaveIcon className="w-3.5 h-3.5" />}
+                  Leave community
                 </button>
               ) : (
                 <button
                   onClick={join}
-                  className="px-4 py-1.5 rounded-full gradient-primary text-white text-sm font-semibold shadow-glow hover:scale-105 transition"
+                  disabled={joining}
+                  className="px-4 py-1.5 rounded-full gradient-primary text-white text-sm font-semibold shadow-glow hover:scale-105 transition disabled:opacity-60 disabled:hover:scale-100 flex items-center gap-1.5"
                 >
-                  Join community
+                  {joining && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {joining ? "Joining…" : "Join community"}
                 </button>
               )}
             </div>
