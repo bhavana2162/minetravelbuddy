@@ -49,10 +49,12 @@ function Landing() {
   const { data: counts = {} } = useQuery({
     queryKey: ["community-counts"],
     queryFn: async () => {
-      const { data } = await supabase.from("community_members").select("community_id");
+      const { data } = await (supabase as unknown as {
+        rpc: (fn: string) => Promise<{ data: { community_id: string; member_count: number }[] | null }>;
+      }).rpc("community_member_counts");
       const map: Record<string, number> = {};
-      (data ?? []).forEach((r: { community_id: string }) => {
-        map[r.community_id] = (map[r.community_id] ?? 0) + 1;
+      (data ?? []).forEach((r) => {
+        map[r.community_id] = Number(r.member_count);
       });
       return map;
     },
