@@ -188,7 +188,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      community_member_counts: {
+        Args: never
+        Returns: {
+          community_id: string
+          member_count: number
+        }[]
+      }
+      is_community_member: {
+        Args: { _community_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
