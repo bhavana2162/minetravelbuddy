@@ -133,10 +133,16 @@ function CommunityChat() {
   // Load messages + subscribe
   useEffect(() => {
     if (!community || !isMember || !user) {
+      setMessages([]);
+      setProfiles({});
+      setReactions([]);
       setOnlineUserIds(new Set());
       return;
     }
     setLoading(true);
+    setMessages([]);
+    setProfiles({});
+    setReactions([]);
     let active = true;
 
     const ch = supabase
