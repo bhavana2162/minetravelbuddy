@@ -205,6 +205,11 @@ function CommunityChat() {
       )
       .on(
         "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages", filter: `community_id=eq.${community.id}` },
+        (payload) => setMessages((current) => mergeMessages(current, [payload.new as Message])),
+      )
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "message_reactions" },
         async () => {
           const ids = messagesRef.current.map((message) => message.id);
