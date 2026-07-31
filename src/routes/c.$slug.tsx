@@ -676,22 +676,89 @@ function CommunityChat() {
                     <button onClick={() => setReplyTo(null)}><X className="w-3.5 h-3.5" /></button>
                   </div>
                 )}
-                {imageUrl && (
-                  <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-muted text-xs">
-                    <span className="truncate">📷 {imageUrl}</span>
-                    <button onClick={() => setImageUrl("")}><X className="w-3.5 h-3.5" /></button>
+                {pendingPreview && (
+                  <div className="relative w-fit rounded-xl overflow-hidden border border-border">
+                    <img src={pendingPreview} alt="Selected preview" className="max-h-40 rounded-xl" />
+                    <button
+                      onClick={clearPending}
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-background/80 hover:bg-background"
+                      title="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    {uploadPct !== null && (
+                      <div className="absolute inset-x-0 bottom-0 bg-background/80 px-2 py-1">
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full gradient-primary transition-all"
+                            style={{ width: `${uploadPct}%` }}
+                          />
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">Uploading… {uploadPct}%</p>
+                      </div>
+                    )}
                   </div>
                 )}
+
+                <input
+                  ref={galleryRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => pickFile(e.target.files?.[0])}
+                />
+                <input
+                  ref={cameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  onChange={(e) => pickFile(e.target.files?.[0])}
+                />
+
                 <div className="flex items-end gap-2">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowPicker((v) => !v)}
+                      className="p-2.5 rounded-lg glass hover:bg-white/10"
+                      title="Emoji"
+                    >
+                      <Smile className="w-4 h-4" />
+                    </button>
+                    <AnimatePresence>
+                      {showPicker && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 6 }}
+                          className="absolute bottom-full left-0 mb-2 p-2 rounded-xl glass-strong shadow-card grid grid-cols-8 gap-1 w-64 z-20"
+                        >
+                          {PICKER_EMOJIS.map((e) => (
+                            <button
+                              key={e}
+                              onClick={() => { setText((t) => t + e); setShowPicker(false); }}
+                              className="w-7 h-7 grid place-items-center rounded-md hover:bg-white/10"
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   <button
-                    onClick={() => {
-                      const url = window.prompt("Paste an image URL");
-                      if (url) setImageUrl(url);
-                    }}
+                    onClick={() => galleryRef.current?.click()}
                     className="p-2.5 rounded-lg glass hover:bg-white/10"
-                    title="Share image"
+                    title="Send image from gallery"
                   >
                     <ImageIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => cameraRef.current?.click()}
+                    className="p-2.5 rounded-lg glass hover:bg-white/10"
+                    title="Take a photo"
+                  >
+                    <Camera className="w-4 h-4" />
                   </button>
                   <textarea
                     value={text}
@@ -708,7 +775,7 @@ function CommunityChat() {
                   />
                   <button
                     onClick={send}
-                    disabled={sending || (!text.trim() && !imageUrl.trim())}
+                    disabled={sending || (!text.trim() && !pendingFile)}
                     className="p-2.5 rounded-lg gradient-primary text-white shadow-glow disabled:opacity-50 hover:scale-105 transition"
                   >
                     {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
