@@ -356,27 +356,85 @@ function CommunityChat() {
     }
   };
 
+  const pickFile = (file: File | null | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast.error("Please choose an image file");
+    if (file.size > 10 * 1024 * 1024) return toast.error("Images must be under 10 MB");
+    setPendingFile(file);
+  };
+
+  const clearPending = () => {
+    setPendingFile(null);
+    setImageUrl("");
+    setUploadPct(null);
+    if (galleryRef.current) galleryRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
+  };
+
   const send = async () => {
-    if (!community || !user || (!text.trim() && !imageUrl.trim())) return;
+    if (!community || !user || sending) return;
+    if (!text.trim() && !pendingFile && !imageUrl.trim()) return;
     setSending(true);
-    const { error } = await supabase.from("messages").insert({
-      community_id: community.id,
-      user_id: user.id,
-      content: text.trim() || (imageUrl ? "📷 image" : ""),
-      image_url: imageUrl.trim() || null,
-      reply_to: replyTo?.id ?? null,
-    });
-    setSending(false);
-    if (error) {
-      console.error("[send message]", error);
-      return toast.error("Your message couldn't be sent. Please try again.");
+    try {
+      let storedImage = imageUrl.trim() || null;
+      if (pendingFile) {
+        setUploadPct(0);
+        storedImage = await uploadChatImage(pendingFile, user.id, setUploadPct);
+      }
+      const { error } = await supabase.from("messages").insert({
+        community_id: community.id,
+        user_id: user.id,
+        content: text.trim() || (storedImage ? "📷 Photo" : ""),
+        image_url: storedImage,
+        reply_to: replyTo?.id ?? null,
+      });
+      if (error) throw error;
+      setText("");
+      setReplyTo(null);
+      clearPending();
+    } catch (err) {
+      console.error("[send message]", err);
+      toast.error("Your message couldn't be sent. Please try again.");
+      setUploadPct(null);
+    } finally {
+      setSending(false);
     }
-    setText(""); setImageUrl(""); setReplyTo(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const content = editing.content.trim();
+    if (!content) return toast.error("Message can't be empty");
+    const { error } = await supabase
+      .from("messages")
+      .update({ content, edited_at: new Date().toISOString() })
+      .eq("id", editing.id);
+    if (error) {
+      console.error("[edit message]", error);
+      return toast.error("We couldn't update your message.");
+    }
+    setEditing(null);
   };
 
   const deleteMsg = async (id: string) => {
-    await supabase.from("messages").delete().eq("id", id);
+    const { error } = await supabase.from("messages").delete().eq("id", id);
+    if (error) {
+      console.error("[delete message]", error);
+      return toast.error("We couldn't delete your message.");
+    }
+    setMessages((current) => current.filter((m) => m.id !== id));
+    toast.success("Message deleted");
   };
+
+  const copyMsg = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy the message");
+    }
+  };
+
 
   const react = async (messageId: string, emoji: string) => {
     if (!user) return;
