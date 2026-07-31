@@ -572,10 +572,39 @@ function CommunityChat() {
                               <span className="font-medium text-foreground/80">{parentAuthor?.name ?? "Traveler"}</span>: {parent.content.slice(0, 80)}
                             </div>
                           )}
-                          {m.content && <p className="text-sm mt-0.5 whitespace-pre-wrap break-words">{m.content}</p>}
-                          {m.image_url && (
-                            <img src={m.image_url} alt="" className="mt-2 max-w-xs rounded-lg border border-border" />
+                          {editing?.id === m.id ? (
+                            <div className="mt-1 space-y-2">
+                              <textarea
+                                value={editing.content}
+                                autoFocus
+                                onChange={(e) => setEditing({ id: m.id, content: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
+                                  if (e.key === "Escape") setEditing(null);
+                                }}
+                                rows={2}
+                                className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-primary outline-none resize-none text-sm"
+                              />
+                              <div className="flex gap-2">
+                                <button onClick={saveEdit} className="px-3 py-1 rounded-md gradient-primary text-white text-xs font-semibold flex items-center gap-1">
+                                  <Check className="w-3 h-3" /> Save
+                                </button>
+                                <button onClick={() => setEditing(null)} className="px-3 py-1 rounded-md glass text-xs">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            m.content && (
+                              <p className="text-sm mt-0.5 whitespace-pre-wrap break-words">
+                                {m.content}
+                                {m.edited_at && (
+                                  <span className="ml-1.5 text-[10px] text-muted-foreground align-baseline">(edited)</span>
+                                )}
+                              </p>
+                            )
                           )}
+                          {m.image_url && <ChatImage src={m.image_url} />}
                           {reactionsByMsg[m.id] && (
                             <div className="mt-1.5 flex gap-1 flex-wrap">
                               {Object.entries(reactionsByMsg[m.id]).map(([emoji, count]) => (
