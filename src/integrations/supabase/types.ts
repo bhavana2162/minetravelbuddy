@@ -110,6 +110,7 @@ export type Database = {
           community_id: string
           content: string
           created_at: string
+          edited_at: string | null
           id: string
           image_url: string | null
           reply_to: string | null
@@ -119,6 +120,7 @@ export type Database = {
           community_id: string
           content: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           image_url?: string | null
           reply_to?: string | null
@@ -128,6 +130,7 @@ export type Database = {
           community_id?: string
           content?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           image_url?: string | null
           reply_to?: string | null
