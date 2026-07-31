@@ -619,17 +619,29 @@ function CommunityChat() {
                             </div>
                           )}
                         </div>
-                        <div className="opacity-0 group-hover:opacity-100 transition flex items-center gap-1 relative">
+                        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition flex items-center gap-1 relative shrink-0">
                           <button onClick={() => setShowEmoji(showEmoji === m.id ? null : m.id)} className="p-1.5 rounded-md hover:bg-white/10" title="React">
                             <Smile className="w-4 h-4" />
                           </button>
                           <button onClick={() => setReplyTo(m)} className="p-1.5 rounded-md hover:bg-white/10" title="Reply">
                             <Reply className="w-4 h-4" />
                           </button>
+                          <button onClick={() => copyMsg(m.content)} className="p-1.5 rounded-md hover:bg-white/10" title="Copy">
+                            <Copy className="w-4 h-4" />
+                          </button>
                           {isMe && (
-                            <button onClick={() => deleteMsg(m.id)} className="p-1.5 rounded-md hover:bg-destructive/20 hover:text-destructive" title="Delete">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => setEditing({ id: m.id, content: m.content })}
+                                className="p-1.5 rounded-md hover:bg-white/10"
+                                title="Edit"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => deleteMsg(m.id)} className="p-1.5 rounded-md hover:bg-destructive/20 hover:text-destructive" title="Delete">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
                           )}
                           <AnimatePresence>
                             {showEmoji === m.id && (
