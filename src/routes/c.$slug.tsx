@@ -24,7 +24,12 @@ export const Route = createFileRoute("/c/$slug")({
   component: CommunityChat,
 });
 
-const EMOJIS = ["👍", "❤️", "😂", "🔥", "🌍", "✈️"];
+const EMOJIS = ["😀", "❤️", "😂", "🔥", "👍", "🎉"];
+const PICKER_EMOJIS = [
+  "😀", "😄", "😊", "😍", "😎", "🤩", "😂", "🤣",
+  "❤️", "🔥", "👍", "🙏", "👏", "🎉", "✨", "💯",
+  "😢", "😮", "🤔", "🥳", "🌍", "✈️", "🏖️", "🏔️",
+];
 
 type Community = {
   id: string; slug: string; name: string; description: string; cover_url: string | null;
@@ -38,6 +43,7 @@ type Message = {
   image_url: string | null;
   reply_to: string | null;
   created_at: string;
+  edited_at?: string | null;
 };
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
 type Presence = { user_id?: string };
