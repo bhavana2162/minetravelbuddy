@@ -70,13 +70,29 @@ function CommunityChat() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
   const [text, setText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [joining, setJoining] = useState(false);
   const [showEmoji, setShowEmoji] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+
+  // Local object-URL preview for the queued image
+  useEffect(() => {
+    if (!pendingFile) { setPendingPreview(null); return; }
+    const url = URL.createObjectURL(pendingFile);
+    setPendingPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
+
 
   // Load community
   useEffect(() => {
