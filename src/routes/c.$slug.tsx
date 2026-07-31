@@ -2,8 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Send, Smile, Reply, Trash2, Image as ImageIcon, X, Users, LogOut as LeaveIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Smile, Reply, Trash2, Image as ImageIcon, Camera, Copy, Pencil, Check, X, Users, LogOut as LeaveIcon, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
+import { ChatImage } from "@/components/ChatImage";
+import { uploadChatImage } from "@/lib/chat-images";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -22,7 +24,12 @@ export const Route = createFileRoute("/c/$slug")({
   component: CommunityChat,
 });
 
-const EMOJIS = ["👍", "❤️", "😂", "🔥", "🌍", "✈️"];
+const EMOJIS = ["😀", "❤️", "😂", "🔥", "👍", "🎉"];
+const PICKER_EMOJIS = [
+  "😀", "😄", "😊", "😍", "😎", "🤩", "😂", "🤣",
+  "❤️", "🔥", "👍", "🙏", "👏", "🎉", "✨", "💯",
+  "😢", "😮", "🤔", "🥳", "🌍", "✈️", "🏖️", "🏔️",
+];
 
 type Community = {
   id: string; slug: string; name: string; description: string; cover_url: string | null;
@@ -36,6 +43,7 @@ type Message = {
   image_url: string | null;
   reply_to: string | null;
   created_at: string;
+  edited_at?: string | null;
 };
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
 type Presence = { user_id?: string };
@@ -62,13 +70,29 @@ function CommunityChat() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
   const [text, setText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [joining, setJoining] = useState(false);
   const [showEmoji, setShowEmoji] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+
+  // Local object-URL preview for the queued image
+  useEffect(() => {
+    if (!pendingFile) { setPendingPreview(null); return; }
+    const url = URL.createObjectURL(pendingFile);
+    setPendingPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
+
 
   // Load community
   useEffect(() => {
@@ -181,6 +205,11 @@ function CommunityChat() {
       )
       .on(
         "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages", filter: `community_id=eq.${community.id}` },
+        (payload) => setMessages((current) => mergeMessages(current, [payload.new as Message])),
+      )
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "message_reactions" },
         async () => {
           const ids = messagesRef.current.map((message) => message.id);
@@ -262,9 +291,14 @@ function CommunityChat() {
   const messagesRef = useRef<Message[]>([]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
+  const lastMessage = messages[messages.length - 1];
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages.length]);
+    const el = scrollRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    });
+  }, [messages.length, lastMessage?.id, loading]);
 
   const join = async () => {
     if (!community || !user || joining) return;
@@ -322,27 +356,85 @@ function CommunityChat() {
     }
   };
 
+  const pickFile = (file: File | null | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast.error("Please choose an image file");
+    if (file.size > 10 * 1024 * 1024) return toast.error("Images must be under 10 MB");
+    setPendingFile(file);
+  };
+
+  const clearPending = () => {
+    setPendingFile(null);
+    setImageUrl("");
+    setUploadPct(null);
+    if (galleryRef.current) galleryRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
+  };
+
   const send = async () => {
-    if (!community || !user || (!text.trim() && !imageUrl.trim())) return;
+    if (!community || !user || sending) return;
+    if (!text.trim() && !pendingFile && !imageUrl.trim()) return;
     setSending(true);
-    const { error } = await supabase.from("messages").insert({
-      community_id: community.id,
-      user_id: user.id,
-      content: text.trim() || (imageUrl ? "📷 image" : ""),
-      image_url: imageUrl.trim() || null,
-      reply_to: replyTo?.id ?? null,
-    });
-    setSending(false);
-    if (error) {
-      console.error("[send message]", error);
-      return toast.error("Your message couldn't be sent. Please try again.");
+    try {
+      let storedImage = imageUrl.trim() || null;
+      if (pendingFile) {
+        setUploadPct(0);
+        storedImage = await uploadChatImage(pendingFile, user.id, setUploadPct);
+      }
+      const { error } = await supabase.from("messages").insert({
+        community_id: community.id,
+        user_id: user.id,
+        content: text.trim() || (storedImage ? "📷 Photo" : ""),
+        image_url: storedImage,
+        reply_to: replyTo?.id ?? null,
+      });
+      if (error) throw error;
+      setText("");
+      setReplyTo(null);
+      clearPending();
+    } catch (err) {
+      console.error("[send message]", err);
+      toast.error("Your message couldn't be sent. Please try again.");
+      setUploadPct(null);
+    } finally {
+      setSending(false);
     }
-    setText(""); setImageUrl(""); setReplyTo(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const content = editing.content.trim();
+    if (!content) return toast.error("Message can't be empty");
+    const { error } = await supabase
+      .from("messages")
+      .update({ content, edited_at: new Date().toISOString() })
+      .eq("id", editing.id);
+    if (error) {
+      console.error("[edit message]", error);
+      return toast.error("We couldn't update your message.");
+    }
+    setEditing(null);
   };
 
   const deleteMsg = async (id: string) => {
-    await supabase.from("messages").delete().eq("id", id);
+    const { error } = await supabase.from("messages").delete().eq("id", id);
+    if (error) {
+      console.error("[delete message]", error);
+      return toast.error("We couldn't delete your message.");
+    }
+    setMessages((current) => current.filter((m) => m.id !== id));
+    toast.success("Message deleted");
   };
+
+  const copyMsg = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy the message");
+    }
+  };
+
 
   const react = async (messageId: string, emoji: string) => {
     if (!user) return;
@@ -480,10 +572,39 @@ function CommunityChat() {
                               <span className="font-medium text-foreground/80">{parentAuthor?.name ?? "Traveler"}</span>: {parent.content.slice(0, 80)}
                             </div>
                           )}
-                          {m.content && <p className="text-sm mt-0.5 whitespace-pre-wrap break-words">{m.content}</p>}
-                          {m.image_url && (
-                            <img src={m.image_url} alt="" className="mt-2 max-w-xs rounded-lg border border-border" />
+                          {editing?.id === m.id ? (
+                            <div className="mt-1 space-y-2">
+                              <textarea
+                                value={editing.content}
+                                autoFocus
+                                onChange={(e) => setEditing({ id: m.id, content: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
+                                  if (e.key === "Escape") setEditing(null);
+                                }}
+                                rows={2}
+                                className="w-full px-3 py-2 rounded-lg bg-input border border-border focus:border-primary outline-none resize-none text-sm"
+                              />
+                              <div className="flex gap-2">
+                                <button onClick={saveEdit} className="px-3 py-1 rounded-md gradient-primary text-white text-xs font-semibold flex items-center gap-1">
+                                  <Check className="w-3 h-3" /> Save
+                                </button>
+                                <button onClick={() => setEditing(null)} className="px-3 py-1 rounded-md glass text-xs">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            m.content && (
+                              <p className="text-sm mt-0.5 whitespace-pre-wrap break-words">
+                                {m.content}
+                                {m.edited_at && (
+                                  <span className="ml-1.5 text-[10px] text-muted-foreground align-baseline">(edited)</span>
+                                )}
+                              </p>
+                            )
                           )}
+                          {m.image_url && <ChatImage src={m.image_url} />}
                           {reactionsByMsg[m.id] && (
                             <div className="mt-1.5 flex gap-1 flex-wrap">
                               {Object.entries(reactionsByMsg[m.id]).map(([emoji, count]) => (
@@ -498,17 +619,29 @@ function CommunityChat() {
                             </div>
                           )}
                         </div>
-                        <div className="opacity-0 group-hover:opacity-100 transition flex items-center gap-1 relative">
+                        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition flex items-center gap-1 relative shrink-0">
                           <button onClick={() => setShowEmoji(showEmoji === m.id ? null : m.id)} className="p-1.5 rounded-md hover:bg-white/10" title="React">
                             <Smile className="w-4 h-4" />
                           </button>
                           <button onClick={() => setReplyTo(m)} className="p-1.5 rounded-md hover:bg-white/10" title="Reply">
                             <Reply className="w-4 h-4" />
                           </button>
+                          <button onClick={() => copyMsg(m.content)} className="p-1.5 rounded-md hover:bg-white/10" title="Copy">
+                            <Copy className="w-4 h-4" />
+                          </button>
                           {isMe && (
-                            <button onClick={() => deleteMsg(m.id)} className="p-1.5 rounded-md hover:bg-destructive/20 hover:text-destructive" title="Delete">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => setEditing({ id: m.id, content: m.content })}
+                                className="p-1.5 rounded-md hover:bg-white/10"
+                                title="Edit"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => deleteMsg(m.id)} className="p-1.5 rounded-md hover:bg-destructive/20 hover:text-destructive" title="Delete">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
                           )}
                           <AnimatePresence>
                             {showEmoji === m.id && (
@@ -543,22 +676,89 @@ function CommunityChat() {
                     <button onClick={() => setReplyTo(null)}><X className="w-3.5 h-3.5" /></button>
                   </div>
                 )}
-                {imageUrl && (
-                  <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-muted text-xs">
-                    <span className="truncate">📷 {imageUrl}</span>
-                    <button onClick={() => setImageUrl("")}><X className="w-3.5 h-3.5" /></button>
+                {pendingPreview && (
+                  <div className="relative w-fit rounded-xl overflow-hidden border border-border">
+                    <img src={pendingPreview} alt="Selected preview" className="max-h-40 rounded-xl" />
+                    <button
+                      onClick={clearPending}
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-background/80 hover:bg-background"
+                      title="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    {uploadPct !== null && (
+                      <div className="absolute inset-x-0 bottom-0 bg-background/80 px-2 py-1">
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full gradient-primary transition-all"
+                            style={{ width: `${uploadPct}%` }}
+                          />
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">Uploading… {uploadPct}%</p>
+                      </div>
+                    )}
                   </div>
                 )}
+
+                <input
+                  ref={galleryRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => pickFile(e.target.files?.[0])}
+                />
+                <input
+                  ref={cameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  onChange={(e) => pickFile(e.target.files?.[0])}
+                />
+
                 <div className="flex items-end gap-2">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowPicker((v) => !v)}
+                      className="p-2.5 rounded-lg glass hover:bg-white/10"
+                      title="Emoji"
+                    >
+                      <Smile className="w-4 h-4" />
+                    </button>
+                    <AnimatePresence>
+                      {showPicker && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 6 }}
+                          className="absolute bottom-full left-0 mb-2 p-2 rounded-xl glass-strong shadow-card grid grid-cols-8 gap-1 w-64 z-20"
+                        >
+                          {PICKER_EMOJIS.map((e) => (
+                            <button
+                              key={e}
+                              onClick={() => { setText((t) => t + e); setShowPicker(false); }}
+                              className="w-7 h-7 grid place-items-center rounded-md hover:bg-white/10"
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   <button
-                    onClick={() => {
-                      const url = window.prompt("Paste an image URL");
-                      if (url) setImageUrl(url);
-                    }}
+                    onClick={() => galleryRef.current?.click()}
                     className="p-2.5 rounded-lg glass hover:bg-white/10"
-                    title="Share image"
+                    title="Send image from gallery"
                   >
                     <ImageIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => cameraRef.current?.click()}
+                    className="p-2.5 rounded-lg glass hover:bg-white/10"
+                    title="Take a photo"
+                  >
+                    <Camera className="w-4 h-4" />
                   </button>
                   <textarea
                     value={text}
@@ -575,7 +775,7 @@ function CommunityChat() {
                   />
                   <button
                     onClick={send}
-                    disabled={sending || (!text.trim() && !imageUrl.trim())}
+                    disabled={sending || (!text.trim() && !pendingFile)}
                     className="p-2.5 rounded-lg gradient-primary text-white shadow-glow disabled:opacity-50 hover:scale-105 transition"
                   >
                     {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
