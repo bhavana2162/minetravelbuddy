@@ -304,6 +304,15 @@ function CommunityChat() {
     });
   }, [messages.length, lastMessage?.id, loading]);
 
+  // Keep the newest messages visible when the mobile keyboard opens/closes.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || viewportHeight === null) return;
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight });
+    });
+  }, [viewportHeight]);
+
   const join = async () => {
     if (!community || !user || joining) return;
     setJoining(true);
