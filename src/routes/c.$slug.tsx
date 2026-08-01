@@ -8,6 +8,7 @@ import { ChatImage } from "@/components/ChatImage";
 import { uploadChatImage } from "@/lib/chat-images";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useVisualViewportHeight } from "@/hooks/use-visual-viewport";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/c/$slug")({
@@ -80,10 +81,13 @@ function CommunityChat() {
   const [joining, setJoining] = useState(false);
   const [showEmoji, setShowEmoji] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [activeMsg, setActiveMsg] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const viewportHeight = useVisualViewportHeight();
   const queryClient = useQueryClient();
+
 
   // Local object-URL preview for the queued image
   useEffect(() => {
